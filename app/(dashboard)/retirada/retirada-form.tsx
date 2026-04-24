@@ -9,13 +9,6 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -56,6 +49,10 @@ interface RetiradaFormProps {
   colaboradores: ColaboradorOption[]
 }
 
+const formatCPF = (cpf: string) => {
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+}
+
 export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) {
   const [ferramentaId, setFerramentaId] = useState('')
   const [colaboradorId, setColaboradorId] = useState('')
@@ -76,7 +73,7 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!ferramentaId || !colaboradorId) {
       toast.error('Selecione a ferramenta e o colaborador')
       return
@@ -90,11 +87,10 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
     setIsLoading(true)
 
     try {
-      // Get current user
       const { data: { user } } = await supabase.auth.getUser()
 
-      // Create movimentação
-      const { error: movError } = await supabase
+      // 1. Cria a movimentação e pega o ID
+      const { data: movData, error: movError } = await supabase
         .from('movimentacoes')
         .insert({
           tipo: 'retirada',
@@ -109,10 +105,12 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
           status: 'pendente',
           created_by: user?.id || null,
         })
+        .select()
+        .single()
 
       if (movError) throw movError
 
-      // Update ferramenta stock
+      // 2. Atualiza estoque
       const { error: stockError } = await supabase
         .from('ferramentas')
         .update({
@@ -122,9 +120,30 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
 
       if (stockError) throw stockError
 
-      toast.success('Retirada registrada com sucesso')
+      // 3. Envia termo para D4Sign
+      try {
+        const termoRes = await fetch('/api/d4sign/criar-termo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movimentacaoId: movData.id }),
+        })
+
+        const termoData = await termoRes.json()
+
+        if (!termoRes.ok) {
+          console.error('Erro D4Sign:', termoData)
+          toast.warning('Retirada registrada, mas houve um problema ao enviar o termo para assinatura.')
+        } else {
+          toast.success('Retirada registrada! Termo enviado para assinatura do colaborador.')
+        }
+      } catch (err) {
+        console.error('Erro ao gerar termo D4Sign:', err)
+        toast.warning('Retirada registrada, mas o termo de assinatura não pôde ser enviado.')
+      }
+
       router.push('/dashboard')
       router.refresh()
+
     } catch (error) {
       console.error('Error:', error)
       toast.error('Erro ao registrar retirada')
@@ -133,14 +152,9 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
     }
   }
 
-  const formatCPF = (cpf: string) => {
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-  }
-
   return (
     <form onSubmit={handleSubmit}>
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Seleção de Ferramenta e Colaborador */}
         <Card>
           <CardHeader>
             <CardTitle>Dados da Retirada</CardTitle>

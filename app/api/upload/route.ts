@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const filename = `${folder}/${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`
 
     const blob = await put(filename, file, {
-  access: 'private',
+  access: 'public',
   token: process.env.BLOB_READ_WRITE_TOKEN,
 })
 

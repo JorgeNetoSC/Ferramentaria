@@ -4,17 +4,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Wrench,
-  Users,
   ArrowUpFromLine,
   ArrowDownToLine,
   AlertTriangle,
   Package,
   Clock,
-  LayoutDashboard,
   ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
-export const revalidate = 0 
+
+export const revalidate = 0
 export const dynamic = 'force-dynamic'
 
 async function getDashboardStats() {
@@ -26,43 +25,45 @@ async function getDashboardStats() {
     { data: recentMovimentacoes },
     { data: alertasRecentes },
   ] = await Promise.all([
-    // Buscamos os dados numéricos reais de cada ferramenta
-    supabase.from('ferramentas')
+    supabase
+      .from('ferramentas')
       .select('quantidade_disponivel, quantidade_total, estado_conservacao')
       .eq('ativo', true),
     supabase.from('alertas').select('*', { count: 'exact', head: true }).eq('lido', false),
-    supabase.from('movimentacoes')
+    supabase
+      .from('movimentacoes')
       .select('*, ferramenta:ferramentas(nome, codigo), colaborador:colaboradores(nome)')
       .order('created_at', { ascending: false })
       .limit(5),
-    supabase.from('alertas').select('*').eq('lido', false).order('created_at', { ascending: false }).limit(5),
+    supabase
+      .from('alertas')
+      .select('*')
+      .eq('lido', false)
+      .order('created_at', { ascending: false })
+      .limit(5),
   ])
 
-  // Inicializamos os acumuladores como zero
- let patrimonioTotal = 0
+  let patrimonioTotal = 0
   let disponivelEmEstoque = 0
   let ferramentasManutencao = 0
 
-  ferramentasData?.forEach(f => {
+  ferramentasData?.forEach((f) => {
     const total = Number(f.quantidade_total || 0)
-    // TRAVA: O disponível nunca pode ser maior que o total daquela linha
-    const disponivelBruto = Number(f.quantidade_disponivel || 0)
-    const disponivelReal = disponivelBruto > total ? total : disponivelBruto
+    const disponivel = Number(f.quantidade_disponivel || 0)
 
     patrimonioTotal += total
-    
+    disponivelEmEstoque += disponivel
+
     if (f.estado_conservacao === 'em_manutencao') {
-      ferramentasManutencao += total
-    } else {
-      disponivelEmEstoque += disponivelReal
+      ferramentasManutencao += total - disponivel
     }
   })
 
   return {
     stats: {
-      patrimonioTotal, // Soma real de todas as unidades
-      disponivelEmEstoque, // Apenas o que está na prateleira e pronto p/ uso
-      ferramentasManutencao, // Itens estragados
+      patrimonioTotal,
+      disponivelEmEstoque,
+      ferramentasManutencao,
       alertasPendentes: alertasPendentes ?? 0,
     },
     recentMovimentacoes: recentMovimentacoes ?? [],
@@ -90,58 +91,44 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Cards Principais de Estado */}
-      {/* Stats Cards - Foco em Inventário */}
-<div className="grid gap-4 md:grid-cols-3">
-  {/* Card Total de Patrimônio */}
-  <Card>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">Patrimônio Total</CardTitle>
-      <Package className="h-4 w-4 text-muted-foreground" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{stats.patrimonioTotal}</div>
-      <p className="text-xs text-muted-foreground">
-        Total de itens cadastrados no sistema
-      </p>
-    </CardContent>
-  </Card>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Patrimônio Total</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.patrimonioTotal}</div>
+            <p className="text-xs text-muted-foreground">Total de itens cadastrados no sistema</p>
+          </CardContent>
+        </Card>
 
-  {/* Card Disponíveis (O que pode ser retirado agora) */}
-  <Card className="border-primary/20 bg-primary/5">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-primary">Disponíveis para Uso</CardTitle>
-      <Wrench className="h-4 w-4 text-primary" />
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold text-primary">{stats.disponivelEmEstoque}</div>
-      <p className="text-xs text-muted-foreground">
-        Itens prontos na prateleira
-      </p>
-    </CardContent>
-  </Card>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-primary">Disponíveis para Uso</CardTitle>
+            <Wrench className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">{stats.disponivelEmEstoque}</div>
+            <p className="text-xs text-muted-foreground">Itens prontos na prateleira</p>
+          </CardContent>
+        </Card>
 
-  {/* Card Manutenção (O que está indisponível) */}
-  <Card className={stats.ferramentasManutencao > 0 ? 'border-orange-500/50 bg-orange-500/5' : ''}>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium">Em Manutenção</CardTitle>
-      <Clock className={`h-4 w-4 ${stats.ferramentasManutencao > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
-    </CardHeader>
-    <CardContent>
-      <div className={`text-2xl font-bold ${stats.ferramentasManutencao > 0 ? 'text-orange-500' : ''}`}>
-        {stats.ferramentasManutencao}
+        <Card className={stats.ferramentasManutencao > 0 ? 'border-orange-500/50 bg-orange-500/5' : ''}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Em Manutenção</CardTitle>
+            <Clock className={`h-4 w-4 ${stats.ferramentasManutencao > 0 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${stats.ferramentasManutencao > 0 ? 'text-orange-500' : ''}`}>
+              {stats.ferramentasManutencao}
+            </div>
+            <p className="text-xs text-muted-foreground">Itens aguardando reparo</p>
+          </CardContent>
+        </Card>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Itens aguardando reparo
-      </p>
-    </CardContent>
-  </Card>
-</div>
-
-      
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Movimentações Recentes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -160,10 +147,11 @@ export default async function DashboardPage() {
                 {recentMovimentacoes.map((mov: any) => (
                   <div key={mov.id} className="flex items-center gap-4">
                     <div className={`p-2 rounded-lg ${mov.tipo === 'retirada' ? 'bg-primary/10' : 'bg-accent/10'}`}>
-                      {mov.tipo === 'retirada' ? 
-                        <ArrowUpFromLine className="h-4 w-4 text-primary" /> : 
+                      {mov.tipo === 'retirada' ? (
+                        <ArrowUpFromLine className="h-4 w-4 text-primary" />
+                      ) : (
                         <ArrowDownToLine className="h-4 w-4 text-accent" />
-                      }
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{mov.ferramenta?.nome}</p>
@@ -179,7 +167,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Alertas */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>

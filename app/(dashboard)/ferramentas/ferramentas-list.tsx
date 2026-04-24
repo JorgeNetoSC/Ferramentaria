@@ -78,15 +78,21 @@ export function FerramentasList({
 
   const supabase = createClient()
 
-  // 🔧 FUNÇÃO MANUTENÇÃO
-  async function handleManutencao(id: string) {
+  // 🔧 ENVIAR PARA MANUTENÇÃO
+  async function handleManutencao(ferramenta: Ferramenta) {
+    if (ferramenta.quantidade_disponivel === 0) {
+      toast.error('Ferramenta indisponível — aguarde a devolução antes de enviar para manutenção')
+      return
+    }
+
     try {
       const { error } = await supabase
         .from('ferramentas')
         .update({
           estado_conservacao: 'em_manutencao',
+          quantidade_disponivel: Math.max(0, ferramenta.quantidade_disponivel - 1),
         })
-        .eq('id', id)
+        .eq('id', ferramenta.id)
 
       if (error) throw error
 
@@ -94,7 +100,13 @@ export function FerramentasList({
 
       setFerramentas((prev) =>
         prev.map((f) =>
-          f.id === id ? { ...f, estado_conservacao: 'em_manutencao' } : f
+          f.id === ferramenta.id
+            ? {
+                ...f,
+                estado_conservacao: 'em_manutencao',
+                quantidade_disponivel: Math.max(0, f.quantidade_disponivel - 1),
+              }
+            : f
         )
       )
     } catch (error) {
@@ -103,7 +115,37 @@ export function FerramentasList({
     }
   }
 
-  // 🗑️ DELETE
+  // ✅ FINALIZAR MANUTENÇÃO
+  const handleFinalizarManutencao = async (ferramenta: Ferramenta) => {
+    const { error } = await supabase
+      .from('ferramentas')
+      .update({
+        estado_conservacao: 'bom',
+        quantidade_disponivel: ferramenta.quantidade_disponivel + 1,
+      })
+      .eq('id', ferramenta.id)
+
+    if (error) {
+      toast.error('Erro ao finalizar manutenção')
+      console.error(error)
+    } else {
+      toast.success('Manutenção finalizada')
+
+      setFerramentas((prev) =>
+        prev.map((f) =>
+          f.id === ferramenta.id
+            ? {
+                ...f,
+                estado_conservacao: 'bom',
+                quantidade_disponivel: f.quantidade_disponivel + 1,
+              }
+            : f
+        )
+      )
+    }
+  }
+
+  // 🗑️ EXCLUIR
   const handleDelete = async () => {
     if (!deleteId) return
 
@@ -125,35 +167,6 @@ export function FerramentasList({
     setIsDeleting(false)
     setDeleteId(null)
   }
-  const handleFinalizarManutencao = async (ferramenta: Ferramenta) => {
-  const { error } = await supabase
-    .from('ferramentas')
-    .update({
-      estado_conservacao: 'bom',
-      quantidade_disponivel: ferramenta.quantidade_disponivel + 1,
-    })
-    .eq('id', ferramenta.id)
-
-  if (error) {
-    toast.error('Erro ao finalizar manutenção')
-    console.error(error)
-  } else {
-    toast.success('Manutenção finalizada')
-    
-    // Atualiza na tela
-    setFerramentas((prev) =>
-      prev.map((f) =>
-        f.id === ferramenta.id
-          ? {
-              ...f,
-              estado_conservacao: 'bom',
-              quantidade_disponivel: f.quantidade_disponivel + 1,
-            }
-          : f
-      )
-    )
-  }
-}
 
   // 🔎 FILTRO
   const filteredFerramentas = ferramentas.filter((f) => {
@@ -261,49 +274,51 @@ export function FerramentasList({
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent align="end">
-  <DropdownMenuItem asChild>
-    <Link href={`/ferramentas/${ferramenta.id}`}>
-      <Eye className="mr-2 h-4 w-4" />
-      Visualizar
-    </Link>
-  </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/ferramentas/${ferramenta.id}`}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </Link>
+                          </DropdownMenuItem>
 
-  <DropdownMenuItem asChild>
-    <Link href={`/ferramentas/${ferramenta.id}/editar`}>
-      <Pencil className="mr-2 h-4 w-4" />
-      Editar
-    </Link>
-  </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/ferramentas/${ferramenta.id}/editar`}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </Link>
+                          </DropdownMenuItem>
 
-  {/* 🔧 ENVIAR PARA MANUTENÇÃO */}
-  {ferramenta.estado_conservacao !== 'em_manutencao' && (
-    <DropdownMenuItem
-      onClick={() => handleManutencao(ferramenta.id)}
-    >
-      <Wrench className="mr-2 h-4 w-4" />
-      Enviar para manutenção
-    </DropdownMenuItem>
-  )}
+                          {/* 🔧 ENVIAR PARA MANUTENÇÃO */}
+                          {ferramenta.estado_conservacao !== 'em_manutencao' && (
+                            <DropdownMenuItem
+                              onClick={() => handleManutencao(ferramenta)}
+                              disabled={ferramenta.quantidade_disponivel === 0}
+                              className={ferramenta.quantidade_disponivel === 0 ? 'opacity-50 cursor-not-allowed' : ''}
+                            >
+                              <Wrench className="mr-2 h-4 w-4" />
+                              Enviar para manutenção
+                            </DropdownMenuItem>
+                          )}
 
-  {/* ✅ FINALIZAR MANUTENÇÃO */}
-  {ferramenta.estado_conservacao === 'em_manutencao' && (
-    <DropdownMenuItem
-      onClick={() => handleFinalizarManutencao(ferramenta)}
-    >
-      <Wrench className="mr-2 h-4 w-4" />
-      Finalizar manutenção
-    </DropdownMenuItem>
-  )}
+                          {/* ✅ FINALIZAR MANUTENÇÃO */}
+                          {ferramenta.estado_conservacao === 'em_manutencao' && (
+                            <DropdownMenuItem
+                              onClick={() => handleFinalizarManutencao(ferramenta)}
+                            >
+                              <Wrench className="mr-2 h-4 w-4" />
+                              Finalizar manutenção
+                            </DropdownMenuItem>
+                          )}
 
-  {/* ❌ EXCLUIR */}
-  <DropdownMenuItem
-    className="text-destructive"
-    onClick={() => setDeleteId(ferramenta.id)}
-  >
-    <Trash2 className="mr-2 h-4 w-4" />
-    Excluir
-  </DropdownMenuItem>
-</DropdownMenuContent>
+                          {/* ❌ EXCLUIR */}
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setDeleteId(ferramenta.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
@@ -315,10 +330,7 @@ export function FerramentasList({
       </Card>
 
       {/* MODAL DELETE */}
-      <AlertDialog
-        open={!!deleteId}
-        onOpenChange={() => setDeleteId(null)}
-      >
+      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
@@ -328,9 +340,7 @@ export function FerramentasList({
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>
-              Cancelar
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>
               {isDeleting ? 'Excluindo...' : 'Excluir'}
             </AlertDialogAction>
