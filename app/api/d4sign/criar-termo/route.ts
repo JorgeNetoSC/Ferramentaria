@@ -152,22 +152,77 @@ ${mov.foto_retirada_url ? `
 </html>
 `
 
-    // 1. Gera PDF a partir do HTML com Puppeteer
-const puppeteer = require('puppeteer')
-const browser = await puppeteer.launch({
-  headless: true,
-  args: ['--no-sandbox', '--disable-setuid-sandbox'],
-})
-const page = await browser.newPage()
-await page.setContent(htmlTermo, { waitUntil: 'networkidle0' })
-const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true })
-await browser.close()
+// 1. Gera DOCX a partir dos dados
+const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, HeadingLevel } = require('docx')
 
-    // 2. Faz upload do PDF para o D4Sign
-    const formData = new FormData()
-    const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' })
-    formData.append('file', pdfBlob, `termo-retirada-${movimentacaoId}.pdf`)
-    formData.append('uuid_safe', SAFE_ID)
+const doc = new Document({
+  sections: [{
+    children: [
+      new Paragraph({
+        text: 'EAGLE SOLUÇÕES',
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+      }),
+      new Paragraph({
+        text: 'TERMO DE RESPONSABILIDADE DE RETIRADA DE FERRAMENTA',
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+      }),
+
+      new Paragraph({ text: 'DADOS DO COLABORADOR', heading: HeadingLevel.HEADING_2, spacing: { before: 200 } }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Nome', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(colaborador.nome)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'CPF', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(cpfFormatado)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Cargo', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(colaborador.cargo)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Setor', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(colaborador.setor)] })] }),
+        ],
+      }),
+
+      new Paragraph({ text: 'DADOS DA FERRAMENTA', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Nome', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(ferramenta.nome)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Código', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(ferramenta.codigo)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Marca', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(ferramenta.marca || '—')] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Modelo', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(ferramenta.modelo || '—')] })] }),
+        ],
+      }),
+
+      new Paragraph({ text: 'DADOS DA RETIRADA', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Data da Retirada', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(dataRetirada)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Data Prevista Devolução', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(dataPrevista)] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Motivo', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(mov.motivo || '—')] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Local de Uso', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(mov.local_uso || '—')] })] }),
+          new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Quantidade', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(String(mov.quantidade))] })] }),
+        ],
+      }),
+
+      new Paragraph({ text: 'TERMOS E CONDIÇÕES', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
+      new Paragraph({ text: `Cláusula 1ª – Da Responsabilidade: Eu, ${colaborador.nome}, declaro estar recebendo a ferramenta descrita acima em boas condições de uso e me comprometo a zelar pela sua conservação, utilizando-a exclusivamente para fins profissionais autorizados pela empresa EAGLE SOLUÇÕES.`, spacing: { after: 200 } }),
+      new Paragraph({ text: 'Cláusula 2ª – Da Devolução: Comprometo-me a devolver a ferramenta até a data prevista indicada neste termo, nas mesmas condições em que a recebi.', spacing: { after: 200 } }),
+      new Paragraph({ text: 'Cláusula 3ª – De Danos e Perdas: Em caso de dano, perda ou extravio causado por mau uso ou negligência, assumo a responsabilidade pelo ressarcimento do valor correspondente ao bem.', spacing: { after: 200 } }),
+      new Paragraph({ text: 'Cláusula 4ª – Da Ciência: Declaro ter lido e compreendido todas as cláusulas deste termo, concordando com seus termos ao assinar eletronicamente este documento.', spacing: { after: 400 } }),
+
+      new Paragraph({ text: `${colaborador.nome}`, alignment: AlignmentType.CENTER, spacing: { before: 800 } }),
+      new Paragraph({ text: `CPF: ${cpfFormatado}`, alignment: AlignmentType.CENTER }),
+      new Paragraph({ text: `${colaborador.cargo} — ${colaborador.setor}`, alignment: AlignmentType.CENTER }),
+    ],
+  }],
+})
+
+const docBuffer = await Packer.toBuffer(doc)
+
+// 2. Faz upload do DOCX para o D4Sign
+const formData = new FormData()
+const docBlob = new Blob([docBuffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+formData.append('file', docBlob, `termo-retirada-${movimentacaoId}.docx`)
+formData.append('uuid_safe', SAFE_ID)
 
     const uploadRes = await fetch(
       `${D4SIGN_BASE}/documents/${SAFE_ID}/upload?tokenAPI=${TOKEN}&cryptKey=${CRYPT_KEY}`,
