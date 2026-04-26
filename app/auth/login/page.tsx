@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Spinner } from '@/components/ui/spinner'
 import { createClient } from '@/lib/supabase/client'
 import { AlertCircle, Wrench, Package, Users, Shield } from 'lucide-react'
-
+import Image from 'next/image'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -53,26 +53,15 @@ export default function LoginPage() {
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-7 h-7 text-white"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5Z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">EAGLE</h1>
-              <span className="text-xs font-medium tracking-widest text-white/80 uppercase">SOLUÇÕES</span>
-            </div>
-          </div>
+  <Image
+    src="/logo-eagle.jpg"
+    alt="Eagle Soluções"
+    width={56}
+    height={56}
+    className="rounded-xl object-contain"
+    priority
+  />
+</div>
           <p className="text-white/80 text-lg max-w-md">
             Sistema de Controle de Ferramentas e Patrimônio
           </p>
@@ -127,7 +116,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 text-white/60 text-sm">
-          © 2024 EAGLE SOLUÇÕES. Todos os direitos reservados.
+           EAGLE SOLUÇÕES. Todos os direitos reservados.
         </div>
       </div>
 
@@ -135,8 +124,15 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden mb-8">
-            <LogoLight size="lg" />
-          </div>
+  <Image
+    src="/logo-eagle.jpg"
+    alt="Eagle Soluções"
+    width={56}
+    height={56}
+    className="rounded-xl object-contain"
+    priority
+  />
+</div>
 
           <Card className="border-border/50 shadow-lg">
             <CardHeader className="space-y-1 text-center">
@@ -202,12 +198,7 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-muted-foreground">
-                Não tem uma conta?{' '}
-                <Link href="/auth/sign-up" className="text-primary hover:underline font-medium">
-                  Solicite acesso
-                </Link>
-              </div>
+              
             </CardContent>
           </Card>
 

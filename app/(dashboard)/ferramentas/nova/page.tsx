@@ -11,7 +11,7 @@ export default async function NovaFerramentaPage() {
     .from('categorias')
     .select('*')
     .order('nome')
-    .neq('estado_conservacao', 'em_manutencao')
+    
 
   return (
     <div className="space-y-6">

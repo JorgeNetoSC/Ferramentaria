@@ -153,7 +153,7 @@ ${mov.foto_retirada_url ? `
 `
 
 // 1. Gera DOCX a partir dos dados
-const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, BorderStyle, AlignmentType, HeadingLevel } = require('docx')
+const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel, ImageRun } = require('docx')
 
 const doc = new Document({
   sections: [{
@@ -202,6 +202,19 @@ const doc = new Document({
           new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Quantidade', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(String(mov.quantidade))] })] }),
         ],
       }),
+      ...(mov.foto_retirada_url ? [
+  new Paragraph({ text: 'FOTO DE EVIDÊNCIA', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
+  new Paragraph({
+    children: [
+      new ImageRun({
+        data: await fetch(mov.foto_retirada_url).then(r => r.arrayBuffer()),
+        transformation: { width: 400, height: 300 },
+        type: 'jpg',
+      }),
+    ],
+    spacing: { after: 200 },
+  }),
+] : []),
 
       new Paragraph({ text: 'TERMOS E CONDIÇÕES', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
       new Paragraph({ text: `Cláusula 1ª – Da Responsabilidade: Eu, ${colaborador.nome}, declaro estar recebendo a ferramenta descrita acima em boas condições de uso e me comprometo a zelar pela sua conservação, utilizando-a exclusivamente para fins profissionais autorizados pela empresa EAGLE SOLUÇÕES.`, spacing: { after: 200 } }),
