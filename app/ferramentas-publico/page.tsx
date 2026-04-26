@@ -1,15 +1,13 @@
-import { createClient } from '@supabase/supabase-js'
+// 1. Mude o import para usar o seu utilitário de servidor
+import { createClient } from '@/lib/supabase/server'
 import FerramentasPublicoClient from '@/components/ferramentas-publico-client'
 
 export const dynamic = 'force-dynamic'
 
 export default async function FerramentasPublicoPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = await createClient()
 
-  const [{ data: ferramentas }, { data: categorias }] = await Promise.all([
+  const [{ data: ferramentasRaw }, { data: categorias }] = await Promise.all([
     supabase
       .from('ferramentas')
       .select('id, nome, codigo, marca, modelo, quantidade_disponivel, quantidade_total, estado_conservacao, categoria_id, categoria:categorias(nome)')
@@ -23,9 +21,16 @@ export default async function FerramentasPublicoPage() {
       .order('nome'),
   ])
 
+  // Trata o campo categoria para garantir que seja um objeto único (ou null), não um array
+  const ferramentas = ferramentasRaw?.map(f => ({
+    ...f,
+    categoria: Array.isArray(f.categoria) ? f.categoria[0] : f.categoria
+  }))
+
   return (
     <FerramentasPublicoClient
-      ferramentas={ferramentas ?? []}
+      // Usamos 'as any' aqui apenas para o TS relaxar na validação final do objeto formatado
+      ferramentas={(ferramentas as any) ?? []}
       categorias={categorias ?? []}
     />
   )
