@@ -45,7 +45,7 @@ export function FerramentaForm({ ferramenta, categorias, mode }: FerramentaFormP
     modelo: ferramenta?.modelo ?? '',
     numero_serie: ferramenta?.numero_serie ?? '',
     valor_unitario: ferramenta?.valor_unitario ?? undefined,
-    quantidade_total: ferramenta?.quantidade_total ?? 1,
+    quantidade_total: 1,
     localizacao: ferramenta?.localizacao ?? '',
     estado_conservacao: ferramenta?.estado_conservacao ?? 'bom',
     data_aquisicao: ferramenta?.data_aquisicao ?? '',
@@ -88,7 +88,8 @@ export function FerramentaForm({ ferramenta, categorias, mode }: FerramentaFormP
       localizacao: formData.localizacao || null,
       estado_conservacao: formData.estado_conservacao || null,
       data_aquisicao: formData.data_aquisicao || null,
-      quantidade_disponivel: mode === 'create' ? formData.quantidade_total : undefined,
+      quantidade_total: 1,
+      quantidade_disponivel: mode === 'create' ? 1 : undefined,
     }
 
     if (mode === 'create') {
@@ -177,7 +178,7 @@ export function FerramentaForm({ ferramenta, categorias, mode }: FerramentaFormP
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="categoria_id">Categoria</Label>
+              <Label htmlFor="categoria_id">Categoria *</Label>
               <Select
                 value={formData.categoria_id ?? 'none'}
                 onValueChange={(v) => handleSelectChange('categoria_id', v)}
@@ -264,20 +265,6 @@ export function FerramentaForm({ ferramenta, categorias, mode }: FerramentaFormP
                 value={formData.valor_unitario ?? ''}
                 onChange={handleNumberChange}
                 placeholder="0,00"
-                disabled={isLoading}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="quantidade_total">Quantidade *</Label>
-              <Input
-                id="quantidade_total"
-                name="quantidade_total"
-                type="number"
-                min="1"
-                value={formData.quantidade_total}
-                onChange={handleNumberChange}
-                required
                 disabled={isLoading}
               />
             </div>

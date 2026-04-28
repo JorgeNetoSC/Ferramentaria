@@ -24,7 +24,7 @@ import {
 import { PhotoUpload } from '@/components/photo-upload'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { ArrowLeft, Save, Check, ChevronsUpDown, User, Wrench } from 'lucide-react'
+import { ArrowLeft, Save, Check, ChevronsUpDown, User, Wrench, RotateCcw, Pin } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -56,9 +56,8 @@ const formatCPF = (cpf: string) => {
 export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) {
   const [ferramentaId, setFerramentaId] = useState('')
   const [colaboradorId, setColaboradorId] = useState('')
-  const [quantidade, setQuantidade] = useState(1)
+  const [tipoRetirada, setTipoRetirada] = useState<'fixa' | 'giro'>('giro')
   const [dataPrevista, setDataPrevista] = useState('')
-  const [motivo, setMotivo] = useState('')
   const [localUso, setLocalUso] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [fotoUrl, setFotoUrl] = useState<string | null>(null)
@@ -79,8 +78,8 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
       return
     }
 
-    if (selectedFerramenta && quantidade > selectedFerramenta.quantidade_disponivel) {
-      toast.error('Quantidade maior que o disponível em estoque')
+    if (tipoRetirada === 'giro' && !dataPrevista) {
+      toast.error('Informe a data prevista de devolução para retirada em Giro')
       return
     }
 
@@ -89,16 +88,15 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      // 1. Cria a movimentação e pega o ID
       const { data: movData, error: movError } = await supabase
         .from('movimentacoes')
         .insert({
           tipo: 'retirada',
           ferramenta_id: ferramentaId,
           colaborador_id: colaboradorId,
-          quantidade,
-          data_prevista_devolucao: dataPrevista || null,
-          motivo: motivo || null,
+          quantidade: 1,
+          data_prevista_devolucao: tipoRetirada === 'giro' ? dataPrevista : null,
+          motivo: tipoRetirada,
           local_uso: localUso || null,
           observacoes: observacoes || null,
           foto_retirada_url: fotoUrl,
@@ -110,17 +108,15 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
 
       if (movError) throw movError
 
-      // 2. Atualiza estoque
       const { error: stockError } = await supabase
         .from('ferramentas')
         .update({
-          quantidade_disponivel: selectedFerramenta!.quantidade_disponivel - quantidade,
+          quantidade_disponivel: selectedFerramenta!.quantidade_disponivel - 1,
         })
         .eq('id', ferramentaId)
 
       if (stockError) throw stockError
 
-      // 3. Envia termo para D4Sign
       try {
         const termoRes = await fetch('/api/d4sign/criar-termo', {
           method: 'POST',
@@ -163,6 +159,7 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+
             {/* Ferramenta */}
             <div className="space-y-2">
               <Label>Ferramenta *</Label>
@@ -199,7 +196,6 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
                             onSelect={() => {
                               setFerramentaId(f.id)
                               setFerramentaOpen(false)
-                              setQuantidade(1)
                             }}
                           >
                             <Check
@@ -282,49 +278,63 @@ export function RetiradaForm({ ferramentas, colaboradores }: RetiradaFormProps) 
               </Popover>
             </div>
 
-            {/* Quantidade */}
+            {/* Tipo de Retirada */}
             <div className="space-y-2">
-              <Label htmlFor="quantidade">Quantidade *</Label>
-              <Input
-                id="quantidade"
-                type="number"
-                min="1"
-                max={selectedFerramenta?.quantidade_disponivel || 1}
-                value={quantidade}
-                onChange={(e) => setQuantidade(parseInt(e.target.value) || 1)}
-                disabled={isLoading}
-              />
-              {selectedFerramenta && (
-                <p className="text-xs text-muted-foreground">
-                  Disponível: {selectedFerramenta.quantidade_disponivel}
-                </p>
-              )}
+              <Label>Tipo de Retirada *</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setTipoRetirada('fixa'); setDataPrevista('') }}
+                  disabled={isLoading}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
+                    tipoRetirada === 'fixa'
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border hover:border-primary/50 text-muted-foreground'
+                  )}
+                >
+                  <Pin className="h-5 w-5" />
+                  <div className="text-center">
+                    <p className="font-semibold text-sm">Fixa</p>
+                    <p className="text-xs opacity-70">Sem data de devolução</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTipoRetirada('giro')}
+                  disabled={isLoading}
+                  className={cn(
+                    'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all',
+                    tipoRetirada === 'giro'
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border hover:border-primary/50 text-muted-foreground'
+                  )}
+                >
+                  <RotateCcw className="h-5 w-5" />
+                  <div className="text-center">
+                    <p className="font-semibold text-sm">Giro</p>
+                    <p className="text-xs opacity-70">Com data de devolução</p>
+                  </div>
+                </button>
+              </div>
             </div>
 
-            {/* Data Prevista */}
-            <div className="space-y-2">
-              <Label htmlFor="dataPrevista">Data Prevista de Devolução</Label>
-              <Input
-                id="dataPrevista"
-                type="date"
-                value={dataPrevista}
-                onChange={(e) => setDataPrevista(e.target.value)}
-                min={new Date().toISOString().split('T')[0]}
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Motivo */}
-            <div className="space-y-2">
-              <Label htmlFor="motivo">Motivo/Finalidade</Label>
-              <Input
-                id="motivo"
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                placeholder="Ex: Manutenção preventiva"
-                disabled={isLoading}
-              />
-            </div>
+            {/* Data Prevista — só aparece se Giro */}
+            {tipoRetirada === 'giro' && (
+              <div className="space-y-2">
+                <Label htmlFor="dataPrevista">Data Prevista de Devolução *</Label>
+                <Input
+                  id="dataPrevista"
+                  type="date"
+                  value={dataPrevista}
+                  onChange={(e) => setDataPrevista(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            )}
 
             {/* Local de Uso */}
             <div className="space-y-2">

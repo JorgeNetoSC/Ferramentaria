@@ -1,6 +1,6 @@
 // EAGLE SOLUÇÕES - Database Types
 
-export type EstadoConservacao = 'novo' | 'bom' | 'regular' | 'ruim' | 'em_manutencao'
+export type EstadoConservacao = 'novo' | 'bom' | 'regular' | 'ruim' | 'em_manutencao' |'descarte'
 export type TipoMovimentacao = 'retirada' | 'devolucao'
 export type StatusMovimentacao = 'pendente' | 'concluido' | 'atrasado' | 'cancelado'
 export type StatusD4Sign = 'pendente' | 'enviado' | 'assinado' | 'recusado' | 'expirado'

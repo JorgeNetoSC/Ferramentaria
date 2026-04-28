@@ -26,6 +26,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -46,6 +47,7 @@ import {
   Eye,
   Wrench,
   Filter,
+  PackageX,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -64,6 +66,7 @@ const estadoLabels: Record<
   regular: { label: 'Regular', variant: 'outline' },
   ruim: { label: 'Ruim', variant: 'destructive' },
   em_manutencao: { label: 'Em Manutenção', variant: 'destructive' },
+  descarte: { label: 'Descarte', variant: 'destructive' },
 }
 
 export function FerramentasList({
@@ -75,6 +78,8 @@ export function FerramentasList({
   const [categoriaFilter, setCategoriaFilter] = useState<string>('all')
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [descarteId, setDescarteId] = useState<string | null>(null)
+  const [isDescartando, setIsDescartando] = useState(false)
 
   const supabase = createClient()
 
@@ -130,25 +135,45 @@ export function FerramentasList({
       console.error(error)
     } else {
       toast.success('Manutenção finalizada')
-
       setFerramentas((prev) =>
         prev.map((f) =>
           f.id === ferramenta.id
-            ? {
-                ...f,
-                estado_conservacao: 'bom',
-                quantidade_disponivel: f.quantidade_disponivel + 1,
-              }
+            ? { ...f, estado_conservacao: 'bom', quantidade_disponivel: f.quantidade_disponivel + 1 }
             : f
         )
       )
     }
   }
 
-  // 🗑️ EXCLUIR
+  // 🗑️ DESCARTE
+  const handleDescarte = async () => {
+    if (!descarteId) return
+    setIsDescartando(true)
+
+    const { error } = await supabase
+  .from('ferramentas')
+  .update({
+    estado_conservacao: 'descarte',
+    quantidade_disponivel: 0,
+    ativo: false,
+  })
+  .eq('id', descarteId)
+
+    if (error) {
+      toast.error('Erro ao enviar para descarte')
+      console.error(error)
+    } else {
+      toast.success('Ferramenta enviada para descarte')
+      setFerramentas(ferramentas.filter((f) => f.id !== descarteId))
+    }
+
+    setIsDescartando(false)
+    setDescarteId(null)
+  }
+
+  // ❌ EXCLUIR
   const handleDelete = async () => {
     if (!deleteId) return
-
     setIsDeleting(true)
 
     const { error } = await supabase
@@ -253,8 +278,7 @@ export function FerramentasList({
                     <TableCell>
                       <Badge
                         variant={
-                          estadoLabels[ferramenta.estado_conservacao ?? 'novo']?.variant ||
-                          'outline'
+                          estadoLabels[ferramenta.estado_conservacao ?? 'novo']?.variant || 'outline'
                         }
                       >
                         {estadoLabels[ferramenta.estado_conservacao ?? 'novo']?.label}
@@ -288,6 +312,8 @@ export function FerramentasList({
                             </Link>
                           </DropdownMenuItem>
 
+                          <DropdownMenuSeparator />
+
                           {/* 🔧 ENVIAR PARA MANUTENÇÃO */}
                           {ferramenta.estado_conservacao !== 'em_manutencao' && (
                             <DropdownMenuItem
@@ -302,17 +328,28 @@ export function FerramentasList({
 
                           {/* ✅ FINALIZAR MANUTENÇÃO */}
                           {ferramenta.estado_conservacao === 'em_manutencao' && (
-                            <DropdownMenuItem
-                              onClick={() => handleFinalizarManutencao(ferramenta)}
-                            >
+                            <DropdownMenuItem onClick={() => handleFinalizarManutencao(ferramenta)}>
                               <Wrench className="mr-2 h-4 w-4" />
                               Finalizar manutenção
                             </DropdownMenuItem>
                           )}
 
+                          {/* 📦 DESCARTE */}
+                          {ferramenta.quantidade_disponivel === 0 ? null : (
+                            <DropdownMenuItem
+                              className="text-orange-500 focus:text-orange-500"
+                              onClick={() => setDescarteId(ferramenta.id)}
+                            >
+                              <PackageX className="mr-2 h-4 w-4" />
+                              Enviar para descarte
+                            </DropdownMenuItem>
+                          )}
+
+                          <DropdownMenuSeparator />
+
                           {/* ❌ EXCLUIR */}
                           <DropdownMenuItem
-                            className="text-destructive"
+                            className="text-destructive focus:text-destructive"
                             onClick={() => setDeleteId(ferramenta.id)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -329,6 +366,27 @@ export function FerramentasList({
         </CardContent>
       </Card>
 
+      {/* MODAL DESCARTE */}
+      <AlertDialog open={!!descarteId} onOpenChange={() => setDescarteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar descarte</AlertDialogTitle>
+            <AlertDialogDescription>
+              A ferramenta será marcada como inativa e removida do estoque disponível. Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDescartando}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDescarte}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              {isDescartando ? 'Descartando...' : 'Confirmar Descarte'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* MODAL DELETE */}
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
@@ -338,7 +396,6 @@ export function FerramentasList({
               Essa ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>
