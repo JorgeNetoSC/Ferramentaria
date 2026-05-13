@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+
 import {
   LayoutDashboard,
   Users,
@@ -14,6 +15,7 @@ import {
   Settings,
   Bell,
   LogOut,
+  BookOpen, // ← adiciona
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/logo'
@@ -57,6 +59,21 @@ const mainNavItems = [
     href: '/estoque',
     icon: Package,
   },
+  {
+  title: 'Ferramentas',
+  href: '/ferramentas',
+  icon: Wrench,
+},
+{
+  title: 'Catálogo',
+  href: '/catalogo',
+  icon: BookOpen,
+},
+{
+  title: 'Estoque',
+  href: '/estoque',
+  icon: Package,
+},
 ]
 
 const operacoesNavItems = [
