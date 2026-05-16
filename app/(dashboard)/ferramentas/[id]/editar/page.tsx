@@ -17,6 +17,7 @@ export default async function EditarFerramentaPage({
   const [{ data: ferramenta }, { data: categorias }] = await Promise.all([
     supabase.from('ferramentas').select('*').eq('id', id).single(),
     supabase.from('categorias').select('*').order('nome'),
+    supabase.from('ferramenta_kit').select('*').eq('ferramenta_id', id),
   ])
 
   if (!ferramenta) {

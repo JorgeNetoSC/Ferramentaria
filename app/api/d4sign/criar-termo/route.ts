@@ -17,14 +17,14 @@ export async function POST(request: NextRequest) {
 
     // Busca dados completos da movimentação
     const { data: mov, error: movError } = await supabase
-      .from('movimentacoes')
-      .select(`
-        *,
-        ferramenta:ferramentas(nome, codigo, marca, modelo),
-        colaborador:colaboradores(nome, cpf, cargo, setor, email)
-      `)
-      .eq('id', movimentacaoId)
-      .single()
+  .from('movimentacoes')
+  .select(`
+    *,
+    ferramenta:ferramentas(nome, codigo, marca, modelo, kit:ferramenta_kit(*)),
+    colaborador:colaboradores(nome, cpf, cargo, setor, email)
+  `)
+  .eq('id', movimentacaoId)
+  .single()
 
     if (movError || !mov) {
       return NextResponse.json({ error: 'Movimentação não encontrada' }, { status: 404 })
@@ -202,6 +202,32 @@ const doc = new Document({
           new TableRow({ children: [new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Quantidade', bold: true })] }) ] }), new TableCell({ children: [new Paragraph(String(mov.quantidade))] })] }),
         ],
       }),
+
+      // Kit da ferramenta
+...(ferramenta.kit && ferramenta.kit.length > 0 ? [
+  new Paragraph({ text: 'COMPONENTES DO KIT', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
+  new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Qtd', bold: true })] })] }),
+          new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Componente', bold: true })] })] }),
+        ]
+      }),
+      ...ferramenta.kit.map((k: any) =>
+        new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph(String(k.quantidade))] }),
+            new TableCell({ children: [new Paragraph(k.componente)] }),
+          ]
+        })
+      )
+    ],
+  }),
+] : []),
+
+
       ...(mov.foto_retirada_url ? [
   new Paragraph({ text: 'FOTO DE EVIDÊNCIA', heading: HeadingLevel.HEADING_2, spacing: { before: 300 } }),
   new Paragraph({

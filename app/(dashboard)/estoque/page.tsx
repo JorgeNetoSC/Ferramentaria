@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Package, AlertTriangle, Wrench, CheckCircle, Tag } from 'lucide-react'
+import { Package, AlertTriangle, Wrench, CheckCircle, Tag, DollarSign, Building, Truck } from 'lucide-react'
 import Link from 'next/link'
 
 export const metadata = {
@@ -35,6 +35,32 @@ export default async function EstoquePage() {
     f.estado_conservacao === 'em_manutencao'
   ).length ?? 0
 
+  // ==========================================
+  // CÁLCULOS FINANCEIROS DO PATRIMÔNIO
+  // ==========================================
+  const financeiro = (ferramentas ?? []).reduce(
+    (acc, f) => {
+      const valorUnitario = Number(f.valor_unitario) || 0
+      const total = f.quantidade_total || 0
+      const disponivel = f.quantidade_disponivel || 0
+      const emCampo = total - disponivel
+
+      acc.patrimonioTotal += total * valorUnitario
+      acc.emEstoque += disponivel * valorUnitario
+      acc.emCampo += emCampo * valorUnitario
+
+      return acc
+    },
+    { patrimonioTotal: 0, emEstoque: 0, emCampo: 0 }
+  )
+
+  const formatarMoeda = (valor: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(valor)
+  }
+
   // Por categoria — conta ferramentas disponíveis e em uso
   const byCategory = categorias?.map(cat => {
     const items = ferramentas?.filter(f => f.categoria_id === cat.id) ?? []
@@ -63,7 +89,7 @@ export default async function EstoquePage() {
         <p className="text-muted-foreground">Visão geral do estoque de ferramentas</p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards (Quantidades) */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-6">
@@ -109,6 +135,47 @@ export default async function EstoquePage() {
             <div>
               <p className={`text-2xl font-bold ${ferramentasManutencao > 0 ? 'text-orange-500' : ''}`}>{ferramentasManutencao}</p>
               <p className="text-sm text-muted-foreground">Em Manutenção</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ==========================================
+          NOVA SEÇÃO: DASHBOARD FINANCEIRO 
+         ========================================== */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-l-4 border-l-primary">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <DollarSign className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Patrimônio Total</p>
+              <p className="text-2xl font-extrabold tracking-tight mt-0.5">{formatarMoeda(financeiro.patrimonioTotal)}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-600">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="p-3 rounded-xl bg-green-500/10">
+              <Building className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor em Estoque</p>
+              <p className="text-2xl font-extrabold tracking-tight text-green-600 mt-0.5">{formatarMoeda(financeiro.emEstoque)}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-blue-600">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="p-3 rounded-xl bg-blue-500/10">
+              <Truck className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Valor em Campo</p>
+              <p className="text-2xl font-extrabold tracking-tight text-blue-600 mt-0.5">{formatarMoeda(financeiro.emCampo)}</p>
             </div>
           </CardContent>
         </Card>
